@@ -10,10 +10,16 @@ from sklearn.metrics import (
     f1_score,
     classification_report,
     confusion_matrix,
-    roc_auc_score
+    roc_auc_score,
+    ConfusionMatrixDisplay
 )
+import matplotlib.pyplot as plt
+
 
 data_folder = Path("data")
+results_folder = Path("results")
+
+results_folder.mkdir(exist_ok=True)
 
 files = sorted(data_folder.glob("*.parquet"))
 
@@ -143,17 +149,113 @@ print(f"F1-Score : {f1:.4f}")
 print(f"ROC-AUC  : {roc_auc:.4f}")
 
 print("\nClassification Report:")
-print(
-    classification_report(
-        y_test,
-        y_pred,
-        target_names=["BENIGN", "ATTACK"]
-    )
+
+report = classification_report(
+    y_test,
+    y_pred,
+    target_names=["BENIGN", "ATTACK"]
 )
 
+print(report)
+
+cm = confusion_matrix(y_test, y_pred)
+
 print("\nConfusion Matrix:")
-print(confusion_matrix(y_test, y_pred))
+print(cm)
+
+results_file = results_folder / "random_forest_results.txt"
+
+with open(results_file, "w", encoding="utf-8") as f:
+    f.write("RANDOM FOREST MODEL SONUÇLARI\n")
+    f.write("=" * 60 + "\n\n")
+
+    f.write(f"Accuracy : {accuracy:.4f}\n")
+    f.write(f"Precision: {precision:.4f}\n")
+    f.write(f"Recall   : {recall:.4f}\n")
+    f.write(f"F1-Score : {f1:.4f}\n")
+    f.write(f"ROC-AUC  : {roc_auc:.4f}\n\n")
+
+    f.write("Classification Report\n")
+    f.write("=" * 60 + "\n")
+    f.write(report)
+
+    f.write("\nConfusion Matrix\n")
+    f.write("=" * 60 + "\n")
+    f.write(str(cm))
+
+print(f"\nSonuçlar kaydedildi: {results_file}")
+
+print("\nConfusion Matrix grafiği oluşturuluyor...")
+
+disp = ConfusionMatrixDisplay(
+    confusion_matrix=cm,
+    display_labels=["BENIGN", "ATTACK"]
+)
+
+disp.plot()
+
+plt.title("Random Forest - Confusion Matrix")
+plt.tight_layout()
+
+confusion_matrix_file = results_folder / "random_forest_confusion_matrix.png"
+
+plt.savefig(
+    confusion_matrix_file,
+    dpi=300,
+    bbox_inches="tight"
+)
+
+plt.close()
+
+print(f"Confusion Matrix kaydedildi: {confusion_matrix_file}")
+
+print("\nFeature Importance hesaplanıyor...")
+
+feature_importance = pd.DataFrame({
+    "Feature": X_train_sample.columns,
+    "Importance": model.feature_importances_
+})
+
+feature_importance = feature_importance.sort_values(
+    by="Importance",
+    ascending=False
+)
+
+feature_importance_file = results_folder / "random_forest_feature_importance.csv"
+
+feature_importance.to_csv(
+    feature_importance_file,
+    index=False
+)
+
+top_features = feature_importance.head(20)
+
+plt.figure(figsize=(10, 8))
+
+plt.barh(
+    top_features["Feature"][::-1],
+    top_features["Importance"][::-1]
+)
+
+plt.xlabel("Importance")
+plt.ylabel("Feature")
+plt.title("Random Forest - Top 20 Feature Importance")
+
+plt.tight_layout()
+
+feature_importance_image = results_folder / "random_forest_feature_importance.png"
+
+plt.savefig(
+    feature_importance_image,
+    dpi=300,
+    bbox_inches="tight"
+)
+
+plt.close()
+
+print(f"Feature Importance tablosu kaydedildi: {feature_importance_file}")
+print(f"Feature Importance grafiği kaydedildi: {feature_importance_image}")
 
 print("\n" + "=" * 70)
-print("RANDOM FOREST TESTİ TAMAMLANDI")
+print("RANDOM FOREST ANALİZİ TAMAMLANDI")
 print("=" * 70)
